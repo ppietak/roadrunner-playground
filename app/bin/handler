@@ -1,0 +1,43 @@
+#!/usr/bin/env bin/php
+<?php
+
+ini_set('display_errors', 'stderr');
+set_time_limit(0);
+
+use Spiral\Goridge;
+use Spiral\RoadRunner;
+use App\Kernel;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
+
+require dirname(__DIR__).'/vendor/autoload.php';
+
+$rr = new RoadRunner\Worker(new Goridge\StreamRelay(STDIN, STDOUT));
+$kernel = new Kernel('dev', true);
+$application = new Application($kernel);
+$application->setCatchExceptions(false);
+$application->setAutoExit(false);
+
+$count = 1;
+while ($body = $rr->receive($context)) {
+    ob_start();
+
+    $input = new ArrayInput([
+        'command' => 'app:lambda',
+        'body' => $body,
+    ]);
+
+    $output = new BufferedOutput();
+
+    try {
+        $application->run($input, $output);
+
+        $output->write(ob_get_contents());
+        $rr->send("Count: " . $count++ . "\n" . $output->fetch());
+    } catch (\Throwable $e) {
+        $rr->error($e->getMessage() . "\n" . $e->getTraceAsString());
+    }
+
+    ob_end_clean();
+}

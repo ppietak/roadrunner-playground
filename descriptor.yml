@@ -1,0 +1,10 @@
+---
+name:
+journeys:
+team:
+team_lead:
+team_email:
+data_base: null
+type: Lambda
+lambda_bucket:
+terraform_bucket:
